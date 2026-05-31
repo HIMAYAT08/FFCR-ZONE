@@ -198,8 +198,22 @@ function renderCategoryMatches(cat) {
 }
 
 function openJoinModal(id) {
+  if (!currentUserData) {
+    alert("Please log in first to join a match.");
+    return;
+  }
+  
   const match = globalMatches.find(m => m.id === id);
   if (!match) return;
+
+  const registeredUids = match.registeredUids || [];
+  const registeredEmails = match.registeredEmails || [];
+  const players = match.players || [];
+  if (registeredUids.includes(currentUserData.uid) || registeredEmails.includes(currentUserData.email) || players.includes(currentUserData.name)) {
+    alert("You already joined this match.");
+    return;
+  }
+
   const joinedCount = match.players && match.players.length > 0 ? match.players.length : Number(match.joinedPlayers) || 0;
   if (joinedCount >= Number(match.totalPlayers)) {
     alert('This match is full. You cannot join now.');
@@ -218,8 +232,26 @@ function closeModal() {
 }
 
 function openRoomDetailsModal(id) {
+  if (!currentUserData) {
+    alert("Please log in first.");
+    return;
+  }
+
   const match = globalMatches.find(m => m.id === id);
   if (!match) return;
+
+  const registeredUids = match.registeredUids || [];
+  const registeredEmails = match.registeredEmails || [];
+  const players = match.players || [];
+  
+  const hasJoined = registeredUids.includes(currentUserData.uid) || 
+                    registeredEmails.includes(currentUserData.email) || 
+                    players.includes(currentUserData.name);
+
+  if (!hasJoined) {
+    alert("Please join this match first to view room details.");
+    return;
+  }
 
   const hasRoomDetails = (match.roomId && match.roomId.trim() !== '') || (match.password && match.password.trim() !== '');
 
@@ -251,6 +283,8 @@ function submitGameName() {
     if (!snapshot.exists()) return;
     const m = snapshot.val();
     let players = m.players || [];
+    let registeredUids = m.registeredUids || [];
+    let registeredEmails = m.registeredEmails || [];
     const joinedCount = players.length > 0 ? players.length : (m.joinedPlayers || 0);
     
     if (joinedCount >= Number(m.totalPlayers)) {
@@ -258,16 +292,20 @@ function submitGameName() {
       return;
     }
     
-    if (players.includes(name)) {
+    if (players.includes(name) || registeredUids.includes(currentUserData.uid) || registeredEmails.includes(currentUserData.email)) {
       alert("You already joined this match.");
       return;
     }
 
     players.push(name);
+    registeredUids.push(currentUserData.uid);
+    registeredEmails.push(currentUserData.email);
 
     // Atomically add player to Database Array
     matchRef.update({
       players: players,
+      registeredUids: registeredUids,
+      registeredEmails: registeredEmails,
       joinedPlayers: players.length
     }).then(() => {
       document.getElementById('nameInputSection').classList.add('hidden');
@@ -277,7 +315,7 @@ function submitGameName() {
       
       const credsBox = document.getElementById('modalCredentials');
       if (m.roomId && m.password) credsBox.innerHTML = `<p><strong>Room ID:</strong> <span>${m.roomId}</span></p><p><strong>Password:</strong> <span>${m.password}</span></p>`;
-      else credsBox.innerHTML = `<p class="alert-text">Room ID and Password will be available before match time.</p>`;
+      else credsBox.innerHTML = `<p class="alert-text">Room details are not available yet.</p>`;
     });
   }).catch(err => alert(err.message));
 }
