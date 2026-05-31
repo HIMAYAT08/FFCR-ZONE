@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Admin Dashboard - FFCR ZONE</title>
+  <link rel="stylesheet" href="style.css" />
+  
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body class="admin-body">
+  <div class="admin-wrapper">
+    <nav class="admin-navbar">
+      <div class="logo-box" onclick="window.location.href='index.html'">
+        <img src="assets/E%20SPORTS.jpg" alt="FFCR ZONE" class="app-logo" />
+        <h2 style="color: var(--primary); margin:0;">FFCR ZONE ADMIN</h2>
+      </div>
+      <div style="display: flex; gap: 10px;">
+        <a href="index.html" class="btn-secondary" style="text-decoration:none; padding: 6px 12px; font-size: 0.9rem;">Back to App</a>
+        <button id="logoutBtn" onclick="adminLogout()" class="btn-primary hidden" style="padding: 6px 12px; font-size: 0.9rem;">Logout</button>
+      </div>
+    </nav>
+
+    <!-- Admin Login Section -->
+    <div id="adminLoginSection" class="admin-login-container">
+      <h2 style="color: var(--primary); margin-bottom: 20px; text-align: center;">ADMIN LOGIN</h2>
+      <div class="form-group">
+        <label>Username</label>
+        <input type="text" id="adminUser" placeholder="Enter username" />
+      </div>
+      <div class="form-group" style="margin-top: 15px;">
+        <label>Password</label>
+        <input type="password" id="adminPass" placeholder="Enter password" />
+      </div>
+      <button onclick="adminLogin()" class="btn-primary" style="margin-top: 25px;">Secure Login</button>
+    </div>
+
+    <div id="adminDashboardSection" class="admin-dashboard hidden">
+      <!-- Add / Edit Match Form -->
+      <div class="admin-container">
+        <h2 id="formTitle">🔧 Add New Match</h2>
+        <form id="adminForm">
+          <input type="hidden" id="editMatchId" />
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Match Name</label>
+              <input type="text" id="matchName" placeholder="e.g. Daily CS Tournament" required />
+            </div>
+            <div class="form-group">
+              <label>Match Category</label>
+              <select id="matchType" required>
+                <option value="Solo">Solo</option>
+                <option value="Duo">Duo</option>
+                <option value="Squad">Squad</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label>Game Version</label>
+              <input type="text" id="matchVersion" placeholder="e.g. Mobile / PC / Emulator" required />
+            </div>
+            <div class="form-group">
+              <label>Entry Fee</label>
+              <input type="text" id="entryFee" placeholder="e.g. Free or 10 Coins" required />
+            </div>
+            <div class="form-group">
+              <label>Prize Pool</label>
+              <input type="text" id="prizePool" placeholder="e.g. 1000 Reward" required />
+            </div>
+            <div class="form-group">
+              <label>Per Kill Reward</label>
+              <input type="text" id="perKill" placeholder="e.g. 10 Reward or -" required />
+            </div>
+            <div class="form-group">
+              <label>Match Timing</label>
+              <input type="datetime-local" id="matchTiming" required />
+            </div>
+            <div class="form-group">
+              <label>Map Name</label>
+              <input type="text" id="mapName" placeholder="e.g. Bermuda" required />
+            </div>
+            <div class="form-group">
+              <label>Total Players</label>
+              <input type="number" id="totalPlayers" placeholder="e.g. 48" required />
+            </div>
+            <div class="form-group">
+              <label>Joined Players</label>
+              <input type="number" id="joinedPlayers" placeholder="e.g. 0" required />
+            </div>
+            <div class="form-group">
+              <label>Room ID (Optional)</label>
+              <input type="text" id="roomId" placeholder="Enter Room ID" />
+            </div>
+            <div class="form-group">
+              <label>Room Password (Optional)</label>
+              <input type="text" id="password" placeholder="Enter Password" />
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" id="cancelEditBtn" class="btn-secondary hidden" onclick="cancelEdit()">Cancel Edit</button>
+            <button type="submit" class="btn-primary">Save Match</button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Manage Matches List -->
+      <div class="admin-list-container">
+        <h2 style="color:var(--text); margin-bottom: 20px; border-bottom:1px solid var(--border); padding-bottom:10px;">📋 Manage Matches</h2>
+        <div id="adminMatchesList" class="admin-matches-list">
+          <!-- Matches list rendered here -->
+        </div>
+      </div>
+
+      <!-- Admin Wallet Management -->
+      <div class="admin-container" style="grid-column: 1 / -1; margin-top: 10px;">
+        <h2 style="color:var(--primary); margin-bottom: 20px; border-bottom:1px solid var(--border); padding-bottom:10px;">💰 Wallet Management</h2>
+        <div class="form-grid">
+          <!-- Manual Add/Deduct -->
+          <div style="background: var(--dark); padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
+            <h3 style="margin-bottom: 15px; font-size: 1.1rem; color: var(--text);">Manual Balance Update</h3>
+            <div class="form-group">
+              <label>User Email/Mobile</label>
+              <input type="text" id="adminWalletEmail" placeholder="Enter user email" />
+            </div>
+            <div class="form-group" style="margin-top: 10px;">
+              <label>Amount (₹)</label>
+              <input type="number" id="adminWalletAmount" placeholder="Enter amount" />
+            </div>
+            <div style="display: flex; gap: 10px; margin-top: 15px;">
+              <button type="button" onclick="adminAddMoney()" class="btn-primary" style="flex: 1; padding: 10px; font-size: 0.9rem;">Add</button>
+              <button type="button" onclick="adminDeductMoney()" class="btn-secondary btn-danger" style="flex: 1; padding: 10px; font-size: 0.9rem;">Deduct</button>
+            </div>
+          </div>
+          
+          <!-- Withdraw Requests -->
+          <div style="background: var(--dark); padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
+            <h3 style="margin-bottom: 15px; font-size: 1.1rem; color: var(--text);">Pending Withdrawals</h3>
+            <div id="adminWithdrawRequests" style="max-height: 250px; overflow-y: auto;">
+              <!-- Requests Loaded via JS -->
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>

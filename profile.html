@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Profile - FFCR ZONE</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <button onclick="window.location.href='index.html'" class="back-btn">⬅ Back to Home</button>
+      <h2 style="font-size: 1.2rem; flex-grow: 1; text-align: center; margin-right: 40px;">My Profile</h2>
+    </header>
+
+    <div style="padding: 15px;">
+      <!-- Edit Name -->
+      <div class="profile-section">
+        <label>Edit Name</label>
+        <input type="text" id="editProfileName" class="auth-input" placeholder="Full Name" />
+        <button onclick="updateProfileName()" class="btn-primary" style="width: 100%; font-size: 0.9rem; padding: 10px;">Update Name</button>
+      </div>
+
+      <!-- Change Password -->
+      <div class="profile-section">
+        <label>Change Password</label>
+        <input type="password" id="editProfilePassword" class="auth-input" placeholder="New Password" />
+        <button onclick="updateProfilePassword()" class="btn-primary" style="width: 100%; font-size: 0.9rem; padding: 10px;">Change Password</button>
+      </div>
+
+      <!-- Actions -->
+      <div style="margin-top: 25px;">
+        <button onclick="userLogout()" class="btn-secondary btn-danger" style="width: 100%; padding: 12px; font-size: 1rem;">Logout Account</button>
+      </div>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

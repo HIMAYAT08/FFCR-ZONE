@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Wallet - CRX ESPORTS</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <header class="app-header">
+      <button onclick="window.location.href='index.html'" class="back-btn">⬅ Back to App</button>
+      <h2 style="font-size: 1.2rem; flex-grow: 1; text-align: center; margin-right: 40px;">My Wallet</h2>
+    </header>
+
+    <div style="padding: 15px;">
+      <!-- Profile Card -->
+      <div class="wallet-profile-card">
+        <h3 id="walletUserName" style="font-size: 1.2rem; margin-bottom: 5px; color: var(--text);">User Name</h3>
+        <p id="walletUserEmail" style="color: var(--text-muted); font-size: 0.9rem;">user@example.com</p>
+      </div>
+
+      <!-- Balance Card -->
+      <div class="wallet-balance-card">
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 5px;">Current Balance</p>
+        <h1 style="color: var(--primary); font-size: 2.5rem; font-weight: 900;">₹<span id="walletPageBalance">0</span></h1>
+      </div>
+
+      <!-- Stats Grid -->
+      <div class="wallet-stats-grid">
+        <div class="wallet-stat-box">
+          <p>Total Earnings</p>
+          <h3 style="color: #00ff9d;">₹<span id="walletTotalEarnings">0</span></h3>
+        </div>
+        <div class="wallet-stat-box">
+          <p>Total Withdrawals</p>
+          <h3 style="color: #ff4444;">₹<span id="walletTotalWithdraw">0</span></h3>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <button onclick="showWalletAdd()" class="btn-primary" style="flex: 1; font-size: 0.95rem; padding: 12px;">Add Money</button>
+        <button onclick="showWalletWithdraw()" class="btn-secondary" style="flex: 1; font-size: 0.95rem; padding: 12px;">Withdraw</button>
+      </div>
+
+      <!-- Action Sections -->
+      <div id="walletAddSection" class="hidden" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px dashed var(--border);">
+        <label style="color: var(--text-muted); font-size: 0.85rem;">Amount to Add</label>
+        <input type="number" id="addAmount" class="auth-input" style="margin-top: 5px; margin-bottom: 10px;" placeholder="₹ Amount" />
+        <button onclick="processAddMoney()" class="btn-primary" style="width: 100%;">Proceed to Pay</button>
+      </div>
+
+      <div id="walletWithdrawSection" class="hidden" style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; margin-bottom: 20px; border: 1px dashed var(--border);">
+        <label style="color: var(--text-muted); font-size: 0.85rem;">Amount to Withdraw</label>
+        <input type="number" id="withdrawAmount" class="auth-input" style="margin-top: 5px; margin-bottom: 10px;" placeholder="₹ Amount" />
+        <label style="color: var(--text-muted); font-size: 0.85rem;">UPI ID</label>
+        <input type="text" id="withdrawUpi" class="auth-input" style="margin-top: 5px; margin-bottom: 15px;" placeholder="yourname@upi" />
+        <button onclick="processWithdraw()" class="btn-primary" style="width: 100%;">Submit Request</button>
+      </div>
+
+      <!-- Transactions -->
+      <h3 style="color: var(--text); border-bottom: 1px solid var(--border); padding-bottom: 10px; margin-bottom: 15px; font-size: 1.1rem;">Transaction History</h3>
+      <div id="transactionHistory" style="display: flex; flex-direction: column; max-height: 300px; overflow-y: auto;">
+        <!-- Loaded via JS -->
+      </div>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>

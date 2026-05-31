@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FFCR ZONE</title>
+  <link rel="stylesheet" href="style.css" />
+  
+  <!-- Firebase SDKs (v8 compat for direct HTML implementation) -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <!-- Auth Screen -->
+    <div id="authScreen" class="auth-screen hidden">
+      <div class="auth-card">
+        <div style="text-align: center; margin-bottom: 25px;">
+          <img src="assets/E%20SPORTS.jpg" alt="FFCR ZONE" class="app-logo" style="margin-bottom: 10px;" />
+          <h2 style="color: var(--primary); font-weight: 900; font-size: 1.8rem;">FFCR ZONE</h2>
+          <p style="color: var(--text-muted); font-size: 0.9rem;">Login or Create an Account</p>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm" onsubmit="handleLogin(event)">
+          <input type="text" id="loginEmail" class="auth-input" placeholder="Email" required />
+          <input type="password" id="loginPassword" class="auth-input" placeholder="Password" required />
+          <button type="submit" class="btn-primary" style="margin-top: 10px;">LOGIN</button>
+          <p class="auth-toggle" onclick="toggleAuthMode('signup')">Don't have an account? <span>Sign up</span></p>
+        </form>
+
+        <!-- Signup Form -->
+        <form id="signupForm" class="hidden" onsubmit="handleSignup(event)">
+          <input type="text" id="signupName" class="auth-input" placeholder="Full Name" required />
+          <input type="text" id="signupEmail" class="auth-input" placeholder="Email" required />
+          <input type="password" id="signupPassword" class="auth-input" placeholder="Create a Password" required />
+          <input type="password" id="signupConfirm" class="auth-input" placeholder="Confirm Password" required />
+          <button type="submit" class="btn-primary" style="margin-top: 10px;">SIGN UP</button>
+          <p class="auth-toggle" onclick="toggleAuthMode('login')">Already have an account? <span>Log in</span></p>
+        </form>
+      </div>
+    </div>
+
+    <!-- Main App Wrapper -->
+    <div id="mainApp" class="hidden">
+      <!-- Home Screen -->
+      <div id="homeScreen">
+      <!-- Top Header -->
+      <header class="app-header">
+        <div class="logo-box" onclick="window.location.href='index.html'">
+          <img src="assets/E%20SPORTS.jpg" alt="FFCR ZONE" class="app-logo" />
+          <h2>FFCR ZONE</h2>
+        </div>
+        <div class="header-right">
+          <a href="admin.html" class="admin-btn">⚙️ Admin Login</a>
+          <span class="icon-btn">🔔</span>
+          <div class="wallet-box">🪙 ₹<span id="headerWalletBalance">0</span></div>
+        </div>
+      </header>
+
+      <!-- Warning Notice Box -->
+      <div class="warning-box">
+        <span class="speaker-icon">📢</span>
+        <marquee scrollamount="5">Submitting incorrect character ID might get you suspended without approval.</marquee>
+      </div>
+
+      <!-- Banner Slider -->
+      <div class="slider-container">
+        <div class="banner-gradient" style="background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.8)), url('https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=600&q=80') center/cover;">
+          <h3>FFCR ZONE TOURNAMENTS</h3>
+          <p>Play & Win Exciting Rewards</p>
+        </div>
+        <div class="dots">
+          <span class="dot active"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+      </div>
+
+      <!-- Categories Section -->
+      <div class="categories-section">
+        <h3 class="section-heading">CONTEST & TOURNAMENTS</h3>
+        <div class="category-grid">
+          <div class="cat-card" onclick="openCategory('Solo')">
+            <div class="cat-img" style="background: url('https://images.unsplash.com/photo-1542751371-adc38448a05e?auto=format&fit=crop&w=200&q=80') center/cover;"></div>
+            <div class="cat-title">Solo</div>
+          </div>
+          <div class="cat-card" onclick="openCategory('Duo')">
+            <div class="cat-img" style="background: url('https://images.unsplash.com/photo-1552820728-8b83bb6b7738?auto=format&fit=crop&w=200&q=80') center/cover;"></div>
+            <div class="cat-title">Duo</div>
+          </div>
+          <div class="cat-card" onclick="openCategory('Squad')">
+            <div class="cat-img" style="background: url('https://images.unsplash.com/photo-1505775561242-727f3f4e628a?auto=format&fit=crop&w=200&q=80') center/cover;"></div>
+            <div class="cat-title">Squad</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div style="text-align: center; padding: 20px; color: var(--text-muted); font-size: 0.8rem; margin-bottom: 60px;">
+        © 2026 FFCR ZONE. All Rights Reserved.
+      </div>
+    </div>
+
+    <!-- Match List Screen (Hidden by Default) -->
+    <div id="matchesScreen" class="hidden">
+      <header class="app-header">
+        <button onclick="showHome()" class="back-btn">⬅ Back</button>
+        <h2 id="catTitle" style="font-size: 1.2rem; flex-grow: 1; text-align: center; margin-right: 40px;">Matches</h2>
+      </header>
+      <div id="matchesGrid" class="matches-list">
+        <!-- Matches loaded here -->
+      </div>
+    </div>
+
+    <!-- Join Modal -->
+    <div id="joinModal" class="modal">
+      <div class="modal-content">
+        <span class="close-btn" onclick="closeModal()">&times;</span>
+        
+        <div id="nameInputSection">
+          <h3 class="modal-title">ENTER YOUR GAME NAME</h3>
+          <input type="text" id="gameNameInput" placeholder="Free Fire UID / Character ID" />
+          <button onclick="submitGameName()" class="btn-primary" style="width:100%; margin-top:15px;">Continue</button>
+        </div>
+        
+        <div id="roomDetailsSection" class="hidden">
+          <h3 class="modal-title">MATCH DETAILS</h3>
+          <div class="match-info-box">
+            <p><strong>Match:</strong> <span id="modalMatchName"></span></p>
+            <p><strong>Timing:</strong> <span id="modalMatchTiming"></span></p>
+          </div>
+          <div id="modalCredentials" class="credentials-box">
+            <!-- Room credentials injected here -->
+          </div>
+          <button onclick="closeModal()" class="btn-secondary" style="width:100%; margin-top:20px;">Close</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Room Details Modal -->
+    <div id="roomDetailsModal" class="modal">
+      <div class="modal-content">
+        <span class="close-btn" onclick="closeRoomDetailsModal()">&times;</span>
+        <h3 class="modal-title">ROOM DETAILS</h3>
+        <div class="match-info-box">
+          <p><strong>Match:</strong> <span id="roomDetailsModalMatchName"></span></p>
+          <p><strong>Timing:</strong> <span id="roomDetailsModalTiming"></span></p>
+        </div>
+        <div class="credentials-box">
+          <p><strong>Room ID:</strong> <span id="roomDetailsModalId"></span></p>
+          <p><strong>Password:</strong> <span id="roomDetailsModalPassword"></span></p>
+        </div>
+        <button onclick="closeRoomDetailsModal()" class="btn-secondary" style="width:100%; margin-top:20px;">Close</button>
+      </div>
+    </div>
+
+    <!-- Bottom Navigation Bar -->
+    <nav class="bottom-nav">
+      <a href="#" id="playBtn" class="active"><span class="nav-icon">🎮</span>Play</a>
+      <a href="#" id="chatBtn"><span class="nav-icon">💬</span>Chat</a>
+      <a href="#" id="walletBtn"><span class="nav-icon">👛</span>Wallet</a>
+      <a href="#" id="profileBtn"><span class="nav-icon">👤</span>My Profile</a>
+    </nav>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
