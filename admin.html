@@ -143,9 +143,77 @@
           </div>
         </div>
       </div>
+
+      <!-- Admin Logo Management -->
+      <div class="admin-container" style="grid-column: 1 / -1; margin-top: 10px;">
+        <h2 style="color:var(--primary); margin-bottom: 20px; border-bottom:1px solid var(--border); padding-bottom:10px;">🖼️ Change Website Logo</h2>
+        <div class="form-grid">
+          <div style="background: var(--dark); padding: 20px; border-radius: 8px; border: 1px solid var(--border); text-align: center; grid-column: 1 / -1;">
+            <img id="adminLogoPreview" src="assets/E%20SPORTS.jpg" alt="Logo Preview" class="app-logo" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; margin-bottom: 15px; border: 2px solid var(--primary);" />
+            <div class="form-group">
+              <input type="file" id="logoFileInput" accept=".jpg, .jpeg, .png, .webp" style="color: var(--text); background: var(--bg); padding: 10px; border-radius: 5px; width: 100%; max-width: 300px; margin: 0 auto;" />
+            </div>
+            <button type="button" onclick="uploadLogo()" class="btn-primary" style="margin-top: 15px; width: 100%; max-width: 300px;">Save Logo</button>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
   <script src="script.js"></script>
+  <script>
+    function uploadLogo() {
+      const fileInput = document.getElementById('logoFileInput');
+      const file = fileInput.files[0];
+      if (!file) {
+        alert('Please select an image first.');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const base64Str = e.target.result;
+        
+        firebase.database().ref('siteSettings/logoUrl').set(base64Str)
+          .then(() => {
+            alert('Logo updated successfully!');
+          })
+          .catch((error) => {
+            console.error('Error updating logo:', error);
+            alert('Failed to update logo.');
+          });
+      };
+      reader.readAsDataURL(file);
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      const fileInput = document.getElementById('logoFileInput');
+      if(fileInput) {
+        fileInput.addEventListener('change', function(e) {
+          const file = e.target.files[0];
+          if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+              document.getElementById('adminLogoPreview').src = e.target.result;
+            }
+            reader.readAsDataURL(file);
+          }
+        });
+      }
+    });
+
+    window.addEventListener('load', () => {
+      if (typeof firebase !== 'undefined' && firebase.database) {
+        firebase.database().ref('siteSettings/logoUrl').on('value', (snapshot) => {
+          const logoUrl = snapshot.val();
+          const defaultLogo = 'assets/E%20SPORTS.jpg';
+          const logos = document.querySelectorAll('.app-logo');
+          logos.forEach(logo => {
+            logo.src = logoUrl ? logoUrl : defaultLogo;
+          });
+        });
+      }
+    });
+  </script>
 </body>
 </html>

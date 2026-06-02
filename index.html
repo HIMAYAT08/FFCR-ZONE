@@ -167,5 +167,19 @@
   </div>
 
   <script src="script.js"></script>
+  <script>
+    window.addEventListener('load', () => {
+      if (typeof firebase !== 'undefined' && firebase.database) {
+        firebase.database().ref('siteSettings/logoUrl').on('value', (snapshot) => {
+          const logoUrl = snapshot.val();
+          const defaultLogo = 'assets/E%20SPORTS.jpg';
+          const logos = document.querySelectorAll('.app-logo');
+          logos.forEach(logo => {
+            logo.src = logoUrl ? logoUrl : defaultLogo;
+          });
+        });
+      }
+    });
+  </script>
 </body>
 </html>
