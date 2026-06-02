@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Add Coins - FFCR ZONE</title>
+  <link rel="stylesheet" href="style.css" />
+
+  <!-- Firebase SDKs -->
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+  
+  <!-- Razorpay SDK -->
+  <script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+</head>
+<body>
+  <div class="app-container" id="paymentScreen">
+    <header class="app-header">
+      <button onclick="window.location.href='wallet.html'" class="back-btn">⬅ Back to Wallet</button>
+      <img src="assets/E%20SPORTS.jpg" alt="FFCR ZONE" class="app-logo" style="width: 35px; height: 35px; border-radius: 50%; object-fit: cover; margin-left: 10px;" />
+      <h2 style="font-size: 1.2rem; flex-grow: 1; text-align: center; margin-right: 40px;">Add Coins</h2>
+    </header>
+
+    <div style="padding: 15px;">
+      <div style="text-align: center; margin-bottom: 20px;">
+        <h2 style="color: var(--text); font-size: 1.5rem;">Select Package</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem;">₹1 = 1 Coin</p>
+      </div>
+
+      <div class="payment-packages-grid">
+        <div class="coin-package" id="pkg-10" onclick="selectCoinPackage(10)">
+          <h3>10 Coins</h3>
+          <p>Pay ₹10</p>
+        </div>
+        <div class="coin-package" id="pkg-50" onclick="selectCoinPackage(50)">
+          <h3>50 Coins</h3>
+          <p>Pay ₹50</p>
+        </div>
+        <div class="coin-package" id="pkg-100" onclick="selectCoinPackage(100)">
+          <h3>100 Coins</h3>
+          <p>Pay ₹100</p>
+        </div>
+        <div class="coin-package" id="pkg-500" onclick="selectCoinPackage(500)">
+          <h3>500 Coins</h3>
+          <p>Pay ₹500</p>
+        </div>
+      </div>
+
+      <div style="background: rgba(0,0,0,0.3); padding: 15px; border-radius: 10px; text-align: center; margin-bottom: 20px; border: 1px dashed var(--primary);">
+        <p style="color: var(--text); font-size: 0.95rem; margin-bottom: 5px;">Secure Payment via Razorpay</p>
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 15px;">Coins will be instantly credited to your wallet upon successful transaction.</p>
+        <button onclick="processRazorpayPayment()" class="btn-primary" style="width: 100%; padding: 14px; font-size: 1.1rem;">Pay Now</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    window.addEventListener('load', () => {
+      if (typeof firebase !== 'undefined' && firebase.database) {
+        firebase.database().ref('siteSettings/logoUrl').on('value', (snapshot) => {
+          const logoUrl = snapshot.val();
+          const defaultLogo = 'assets/E%20SPORTS.jpg';
+          const logos = document.querySelectorAll('.app-logo');
+          logos.forEach(logo => {
+            logo.src = logoUrl ? logoUrl : defaultLogo;
+          });
+        });
+      }
+    });
+  </script>
+</body>
+</html>

@@ -62,8 +62,8 @@
               <input type="text" id="matchVersion" placeholder="e.g. Mobile / PC / Emulator" required />
             </div>
             <div class="form-group">
-              <label>Entry Fee</label>
-              <input type="text" id="entryFee" placeholder="e.g. Free or 10 Coins" required />
+              <label>Entry Fee (Coins)</label>
+              <input type="number" id="entryFee" placeholder="0 for Free, 10 for Paid" required />
             </div>
             <div class="form-group">
               <label>Prize Pool</label>
@@ -125,8 +125,8 @@
               <input type="text" id="adminWalletEmail" placeholder="Enter user email" />
             </div>
             <div class="form-group" style="margin-top: 10px;">
-              <label>Amount (₹)</label>
-              <input type="number" id="adminWalletAmount" placeholder="Enter amount" />
+              <label>Amount (Coins)</label>
+              <input type="number" id="adminWalletAmount" placeholder="Enter coins" />
             </div>
             <div style="display: flex; gap: 10px; margin-top: 15px;">
               <button type="button" onclick="adminAddMoney()" class="btn-primary" style="flex: 1; padding: 10px; font-size: 0.9rem;">Add</button>
@@ -138,6 +138,14 @@
           <div style="background: var(--dark); padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
             <h3 style="margin-bottom: 15px; font-size: 1.1rem; color: var(--text);">Pending Withdrawals</h3>
             <div id="adminWithdrawRequests" style="max-height: 250px; overflow-y: auto;">
+              <!-- Requests Loaded via JS -->
+            </div>
+          </div>
+
+          <!-- Add Coin Requests -->
+          <div style="background: var(--dark); padding: 20px; border-radius: 8px; border: 1px solid var(--border);">
+            <h3 style="margin-bottom: 15px; font-size: 1.1rem; color: var(--text);">Pending Add Coin Requests</h3>
+            <div id="adminAddCoinRequests" style="max-height: 250px; overflow-y: auto;">
               <!-- Requests Loaded via JS -->
             </div>
           </div>

@@ -2,6 +2,7 @@ let currentJoinMatchId = null;
 let activeCategory = 'Solo';
 let globalMatches = [];
 let globalTransactions = [];
+let globalAddCoinRequests = [];
 let currentUserData = null;
 
 // --- FIREBASE CONFIGURATION ---
@@ -33,12 +34,25 @@ function initApp() {
       // Attach live listener to User's Database Document
       db.ref('users/' + user.uid).on('value', snapshot => {
         if (snapshot.exists()) {
-          currentUserData = { uid: user.uid, ...snapshot.val() };
-          const hBal = document.getElementById('headerWalletBalance');
-          if (hBal) hBal.innerText = currentUserData.walletBalance || 0;
+          currentUserData = { ...currentUserData, uid: user.uid, ...snapshot.val() };
           if (document.getElementById('walletUserName')) initWalletPage();
           if (document.getElementById('editProfileName')) initProfilePage();
         }
+      });
+      // Listen to wallet coins separately
+      db.ref('wallets/' + user.uid + '/coins').on('value', snapshot => {
+        const bal = snapshot.val() || 0;
+        if (currentUserData) currentUserData.walletBalance = bal;
+        else currentUserData = { uid: user.uid, walletBalance: bal };
+        
+        const hBal = document.getElementById('headerWalletBalance');
+        if (hBal) hBal.innerText = bal;
+        const wBal = document.getElementById('walletPageBalance');
+        if (wBal) wBal.innerText = bal;
+      });
+      // Listen to wallet transactions
+      db.ref('wallets/' + user.uid + '/transactions').on('value', snapshot => {
+        if (document.getElementById('transactionHistory')) renderUserTransactions(snapshot);
       });
       if (authScreen && mainApp) {
         authScreen.classList.add('hidden');
@@ -49,7 +63,7 @@ function initApp() {
       if (authScreen && mainApp) {
         authScreen.classList.remove('hidden');
         mainApp.classList.add('hidden');
-      } else if (document.getElementById('walletUserName') || document.getElementById('editProfileName')) {
+      } else if (document.getElementById('walletUserName') || document.getElementById('editProfileName') || document.getElementById('paymentScreen')) {
         window.location.href = 'index.html'; // Kick out of protected pages
       }
     }
@@ -79,11 +93,10 @@ function handleSignup(e) {
   }
 
   auth.createUserWithEmailAndPassword(email, pass).then(cred => {
-    // Create user document in real-time database
+    db.ref('wallets/' + cred.user.uid + '/coins').set(0);
     return db.ref('users/' + cred.user.uid).set({
       name: name,
       email: email,
-      walletBalance: 0
     });
   }).catch(err => alert(err.message));
 }
@@ -105,6 +118,13 @@ function initProfilePage() {
   }
 }
 
+function initWalletPage() {
+  const nameEl = document.getElementById('walletUserName');
+  const emailEl = document.getElementById('walletUserEmail');
+  if (nameEl) nameEl.innerText = currentUserData.name || 'User';
+  if (emailEl) emailEl.innerText = currentUserData.email || '';
+}
+
 function updateProfileName() {
   if (!currentUserData) return;
   const newName = document.getElementById('editProfileName').value.trim();
@@ -123,6 +143,78 @@ function updateProfilePassword() {
       document.getElementById('editProfilePassword').value = '';
     })
     .catch(err => alert(err.message));
+}
+
+function showWalletWithdraw() {
+  document.getElementById('walletWithdrawSection').classList.remove('hidden');
+}
+
+let selectedCoinPackage = 0;
+
+function selectCoinPackage(amount) {
+  selectedCoinPackage = amount;
+  document.querySelectorAll('.coin-package').forEach(el => el.classList.remove('active'));
+  const selectedEl = document.getElementById('pkg-' + amount);
+  if(selectedEl) selectedEl.classList.add('active');
+}
+
+function processRazorpayPayment() {
+  if (!currentUserData) {
+    alert("Please log in first.");
+    return;
+  }
+  if (!selectedCoinPackage || selectedCoinPackage <= 0) {
+    alert("Please select a coin package first.");
+    return;
+  }
+
+  const amountInPaise = selectedCoinPackage * 100;
+  
+  const options = {
+    "key": "rzp_test_YOUR_TEST_KEY", // Note: Replace with actual Razorpay Key ID
+    "amount": amountInPaise.toString(),
+    "currency": "INR",
+    "name": "FFCR ZONE",
+    "description": "Add Coins to Wallet",
+    "handler": function (response) {
+      const amount = selectedCoinPackage;
+      const currentBal = currentUserData.walletBalance || 0;
+      db.ref('wallets/' + currentUserData.uid + '/coins').set(currentBal + amount);
+      db.ref('wallets/' + currentUserData.uid + '/transactions').push({
+        type: 'Deposit', amount: amount, desc: `${amount} Coins added via Razorpay`, date: new Date().toISOString()
+      }).then(() => {
+        alert("Payment successful! Coins added to your wallet.");
+        window.location.href = 'wallet.html';
+      });
+    },
+    "prefill": { "name": currentUserData.name || "User", "email": currentUserData.email || "" },
+    "theme": { "color": "#ff8800" }
+  };
+  
+  const rzp1 = new Razorpay(options);
+  rzp1.on('payment.failed', function (response){
+    alert("Payment failed. Please try again.\nReason: " + response.error.description);
+  });
+  rzp1.open();
+}
+
+function processWithdraw() {
+  if (!currentUserData) return alert("Please log in");
+  const amount = parseInt(document.getElementById('withdrawAmount').value);
+  const upi = document.getElementById('withdrawUpi').value.trim();
+  if (!amount || amount <= 0) return alert("Please enter a valid amount");
+  if (!upi) return alert("Please enter a valid UPI ID");
+  
+  if ((currentUserData.walletBalance || 0) < amount) return alert("Insufficient coins for withdrawal.");
+  
+  db.ref('wallets/' + currentUserData.uid + '/coins').set(currentUserData.walletBalance - amount);
+  const reqRef = db.ref('transactions').push();
+  reqRef.set({ uid: currentUserData.uid, email: currentUserData.email, type: 'Withdrawal', amount: amount, upi: upi, status: 'Pending', date: new Date().toISOString() })
+  .then(() => {
+    alert("Withdrawal request submitted.");
+    document.getElementById('withdrawAmount').value = '';
+    document.getElementById('withdrawUpi').value = '';
+  });
 }
 
 function userLogout() {
@@ -173,7 +265,7 @@ function renderCategoryMatches(cat) {
         <div class="stats-grid">
           <div class="stat-box stat-prize"><span>Prize Pool</span><strong>${m.prize}</strong></div>
           <div class="stat-box"><span>Per Kill</span><strong>${m.perKill || '-'}</strong></div>
-          <div class="stat-box"><span>Entry Fee</span><strong style="color:var(--primary);">${m.fee}</strong></div>
+          <div class="stat-box"><span>Entry Fee</span><strong style="color:var(--primary);">${m.entryFeeCoins > 0 ? m.entryFeeCoins + ' Coins' : 'Free'}</strong></div>
         </div>
         <div class="match-info-grid">
           <div>Type <strong>${m.type}</strong></div>
@@ -297,9 +389,29 @@ function submitGameName() {
       return;
     }
 
+    const fee = parseInt(m.entryFeeCoins) || 0;
+    if (fee > 0) {
+      if ((currentUserData.walletBalance || 0) < fee) {
+        alert("Insufficient coins. Please add coins to join this match.");
+        return;
+      }
+      // Deduct coins & Save Transaction
+      const currentBal = currentUserData.walletBalance || 0;
+      db.ref('wallets/' + currentUserData.uid + '/coins').set(currentBal - fee);
+      db.ref('wallets/' + currentUserData.uid + '/transactions').push({
+        type: 'Match Join',
+        amount: fee,
+        desc: `${fee} Coins deducted for joining ${m.name}`,
+        date: new Date().toISOString()
+      });
+    }
+
     players.push(name);
     registeredUids.push(currentUserData.uid);
     registeredEmails.push(currentUserData.email);
+
+    // Save joined player globally
+    db.ref(`joinedPlayers/${currentJoinMatchId}/${currentUserData.uid}`).set({ gameName: name, joinedAt: new Date().toISOString() });
 
     // Atomically add player to Database Array
     matchRef.update({
@@ -328,7 +440,7 @@ function renderAdminMatches() {
     <div class="admin-match-item">
       <div class="admin-match-info">
         <h4>${m.name} <span style="font-size: 0.8rem; color:#888;">(${m.type})</span></h4>
-        <p>${new Date(m.timing).toLocaleString()} | Map: ${m.map} | Prize: ${m.prize}</p>
+        <p>${new Date(m.timing).toLocaleString()} | Map: ${m.map} | Fee: ${m.entryFeeCoins > 0 ? m.entryFeeCoins + ' Coins' : 'Free'}</p>
       </div>
       <div class="admin-actions">
         <button class="btn-edit" onclick="editMatch('${m.id}')">Edit</button>
@@ -347,7 +459,7 @@ function handleAdminSubmit(e) {
     type: document.getElementById('matchType').value,
     version: document.getElementById('matchVersion').value,
     perKill: document.getElementById('perKill').value,
-    fee: document.getElementById('entryFee').value,
+    entryFeeCoins: parseInt(document.getElementById('entryFee').value) || 0,
     prize: document.getElementById('prizePool').value,
     timing: document.getElementById('matchTiming').value,
     map: document.getElementById('mapName').value,
@@ -379,7 +491,7 @@ function editMatch(id) {
   document.getElementById('matchType').value = match.type;
   document.getElementById('matchVersion').value = match.version || '';
   document.getElementById('perKill').value = match.perKill || '';
-  document.getElementById('entryFee').value = match.fee;
+  document.getElementById('entryFee').value = match.entryFeeCoins || 0;
   document.getElementById('prizePool').value = match.prize;
   document.getElementById('matchTiming').value = match.timing;
   document.getElementById('mapName').value = match.map;
@@ -432,6 +544,25 @@ function showAdminDashboard() {
   document.getElementById('logoutBtn').classList.remove('hidden');
 }
 
+function renderAdminAddCoinRequests() {
+  const container = document.getElementById('adminAddCoinRequests');
+  if (!container) return;
+  let pendingReqs = globalAddCoinRequests.filter(r => r.status === 'Pending').sort((a,b) => new Date(a.date) - new Date(b.date));
+  if (pendingReqs.length === 0) {
+    container.innerHTML = '<p style="color:var(--text-muted); font-style:italic;">No pending requests.</p>';
+    return;
+  }
+  container.innerHTML = pendingReqs.map(r => `
+    <div style="background: var(--card-bg); padding: 10px; border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--primary); display: flex; justify-content: space-between; align-items: center;">
+      <div><strong>${r.email}</strong><div style="font-size: 0.8rem; color: var(--text-muted);">${r.amount} Coins Requested</div></div>
+      <div style="display: flex; gap: 5px;">
+        <button onclick="approveAddCoin('${r.id}', '${r.uid}', ${r.amount})" style="background:#00ff9d; color:#000; border:none; padding:5px 8px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 0.8rem;">✓</button>
+        <button onclick="rejectAddCoin('${r.id}')" style="background:#ff4444; color:#fff; border:none; padding:5px 8px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 0.8rem;">✗</button>
+      </div>
+    </div>
+  `).join('');
+}
+
 function renderAdminWithdrawRequests() {
   const container = document.getElementById('adminWithdrawRequests');
   if (!container) return;
@@ -443,7 +574,7 @@ function renderAdminWithdrawRequests() {
   }
   container.innerHTML = pendingTxs.map(t => `
     <div style="background: var(--card-bg); padding: 10px; border-radius: 8px; margin-bottom: 8px; border: 1px solid var(--primary); display: flex; justify-content: space-between; align-items: center;">
-      <div><strong>${t.email}</strong><div style="font-size: 0.8rem; color: var(--text-muted);">₹${t.amount} | UPI: <span style="color:var(--text);">${t.upi}</span></div></div>
+      <div><strong>${t.email}</strong><div style="font-size: 0.8rem; color: var(--text-muted);">${t.amount} Coins | UPI: <span style="color:var(--text);">${t.upi}</span></div></div>
       <div style="display: flex; gap: 5px;">
         <button onclick="approveWithdraw('${t.id}')" style="background:#00ff9d; color:#000; border:none; padding:5px 8px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 0.8rem;">✓</button>
         <button onclick="rejectWithdraw('${t.id}')" style="background:#ff4444; color:#fff; border:none; padding:5px 8px; border-radius:4px; cursor:pointer; font-weight:bold; font-size: 0.8rem;">✗</button>
@@ -456,56 +587,105 @@ function approveWithdraw(id) {
   db.ref('transactions/' + id).update({ status: 'Approved' });
 }
 
+function approveAddCoin(reqId, uid, amount) {
+  db.ref('wallets/' + uid + '/coins').once('value').then(snap => {
+    const currentBal = snap.val() || 0;
+    db.ref('wallets/' + uid + '/coins').set(currentBal + amount);
+    db.ref('wallets/' + uid + '/transactions').push({
+      type: 'Admin Add',
+      amount: amount,
+      desc: `${amount} Coins added via request`,
+      date: new Date().toISOString()
+    });
+    db.ref('addCoinRequests/' + reqId).update({ status: 'Approved' });
+  });
+}
+
+function rejectAddCoin(reqId) {
+  db.ref('addCoinRequests/' + reqId).update({ status: 'Rejected' });
+}
+
 function rejectWithdraw(id) {
   db.ref('transactions/' + id).once('value').then(snap => {
     if (!snap.exists()) return;
     const tx = snap.val();
-    return db.ref('users').orderByChild('email').equalTo(tx.email).once('value').then(userSnap => {
-      if (userSnap.exists()) {
-        userSnap.forEach(childSnap => {
-          const currentBal = childSnap.val().walletBalance || 0;
-          childSnap.ref.update({ walletBalance: currentBal + tx.amount });
+    if (tx.uid) {
+      db.ref('wallets/' + tx.uid + '/coins').once('value').then(balSnap => {
+        const currentBal = balSnap.val() || 0;
+        db.ref('wallets/' + tx.uid + '/coins').set(currentBal + tx.amount);
+        db.ref('wallets/' + tx.uid + '/transactions').push({
+          type: 'Refund', amount: tx.amount, desc: `Refund: Withdrawal Rejected`, date: new Date().toISOString()
         });
-      }
-      return db.ref('transactions/' + id).update({ status: 'Rejected' });
-    });
+      });
+    }
+    return db.ref('transactions/' + id).update({ status: 'Rejected' });
   }).catch(err => alert(err.message));
 }
 
 function adminAddMoney() {
   const email = document.getElementById('adminWalletEmail').value.trim();
-  const amount = document.getElementById('adminWalletAmount').value;
+  const amount = parseInt(document.getElementById('adminWalletAmount').value);
   if (!email || !amount || amount <= 0) { alert('Enter valid details.'); return; }
 
   db.ref('users').orderByChild('email').equalTo(email).once('value').then(snap => {
-    if (!snap.exists()) { alert("User not found in Firebase Database."); return; }
+    if (!snap.exists()) { alert("User not found."); return; }
     let updates = [];
     snap.forEach(childSnap => {
-      const currentBal = childSnap.val().walletBalance || 0;
-      updates.push(childSnap.ref.update({ walletBalance: currentBal + Number(amount) }));
+      const uid = childSnap.key;
+      updates.push(db.ref('wallets/' + uid + '/coins').once('value').then(balSnap => {
+        const currentBal = balSnap.val() || 0;
+        db.ref('wallets/' + uid + '/coins').set(currentBal + amount);
+        db.ref('wallets/' + uid + '/transactions').push({
+          type: 'Admin Add', amount: amount, desc: `${amount} Coins added manually by Admin`, date: new Date().toISOString()
+        });
+      }));
     });
     return Promise.all(updates);
   }).then(() => {
-    return db.ref('transactions').push({ email: email, type: 'Added by Admin', amount: Number(amount), upi: '-', status: 'Approved', date: new Date().toISOString() });
-  }).then(() => { alert('Balance added live!'); document.getElementById('adminWalletAmount').value = ''; }).catch(err => alert(err.message));
+    alert('Coins added live!'); document.getElementById('adminWalletAmount').value = ''; 
+  }).catch(err => alert(err.message));
 }
 
 function adminDeductMoney() {
   const email = document.getElementById('adminWalletEmail').value.trim();
-  const amount = document.getElementById('adminWalletAmount').value;
+  const amount = parseInt(document.getElementById('adminWalletAmount').value);
   if (!email || !amount || amount <= 0) { alert('Enter valid details.'); return; }
 
   db.ref('users').orderByChild('email').equalTo(email).once('value').then(snap => {
-    if (!snap.exists()) { alert("User not found in Firebase Database."); return; }
+    if (!snap.exists()) { alert("User not found."); return; }
     let updates = [];
     snap.forEach(childSnap => {
-      const currentBal = childSnap.val().walletBalance || 0;
-      updates.push(childSnap.ref.update({ walletBalance: currentBal - Number(amount) }));
+      const uid = childSnap.key;
+      updates.push(db.ref('wallets/' + uid + '/coins').once('value').then(balSnap => {
+        const currentBal = balSnap.val() || 0;
+        db.ref('wallets/' + uid + '/coins').set(currentBal - amount);
+        db.ref('wallets/' + uid + '/transactions').push({
+          type: 'Admin Deduct', amount: amount, desc: `${amount} Coins deducted manually by Admin`, date: new Date().toISOString()
+        });
+      }));
     });
     return Promise.all(updates);
   }).then(() => {
-    return db.ref('transactions').push({ email: email, type: 'Deducted by Admin', amount: Number(amount), upi: '-', status: 'Approved', date: new Date().toISOString() });
-  }).then(() => { alert('Balance deducted live!'); document.getElementById('adminWalletAmount').value = ''; }).catch(err => alert(err.message));
+    alert('Coins deducted live!'); document.getElementById('adminWalletAmount').value = ''; 
+  }).catch(err => alert(err.message));
+}
+
+function renderUserTransactions(snapshot) {
+  const container = document.getElementById('transactionHistory');
+  if (!container) return;
+  const txs = [];
+  snapshot.forEach(child => txs.push(child.val()));
+  txs.sort((a, b) => new Date(b.date) - new Date(a.date));
+  if(txs.length === 0) { container.innerHTML = '<p style="color:var(--text-muted); text-align:center; padding:10px;">No transactions yet.</p>'; return; }
+  container.innerHTML = txs.map(t => `
+    <div style="background: rgba(0,0,0,0.2); padding: 10px; margin-bottom: 8px; border-radius: 6px; border-left: 3px solid var(--primary);">
+      <p style="margin: 0; font-size: 0.9rem; color: var(--text);">${t.desc || t.type}</p>
+      <div style="display: flex; justify-content: space-between; margin-top: 5px;">
+        <span style="font-size: 0.8rem; color: var(--text-muted);">${new Date(t.date).toLocaleString()}</span>
+        <strong style="color: ${['Match Join', 'Withdrawal', 'Admin Deduct'].includes(t.type) ? '#ff4444' : '#00ff9d'};">${['Match Join', 'Withdrawal', 'Admin Deduct'].includes(t.type) ? '-' : '+'}${t.amount} Coins</strong>
+      </div>
+    </div>
+  `).join('');
 }
 
 // --- INIT ---
@@ -529,6 +709,14 @@ window.onload = () => {
     renderAdminMatches();
   });
   
+  db.ref('addCoinRequests').on('value', snapshot => {
+    globalAddCoinRequests = [];
+    if (snapshot.exists()) {
+      snapshot.forEach(child => globalAddCoinRequests.push({ id: child.key, ...child.val() }));
+    }
+    renderAdminAddCoinRequests();
+  });
+
   db.ref('transactions').on('value', snapshot => {
     globalTransactions = [];
     if (snapshot.exists()) {
@@ -536,9 +724,7 @@ window.onload = () => {
         globalTransactions.push({ id: child.key, ...child.val() });
       });
     }
-    try { if (currentUserData) renderTransactionHistory(currentUserData.email); } catch(e) {}
     renderAdminWithdrawRequests();
-    try { if (currentUserData && document.getElementById('walletUserName')) updateWalletPageData(currentUserData.email); } catch(e) {}
   });
 
   const adminDashboard = document.getElementById('adminDashboardSection');
